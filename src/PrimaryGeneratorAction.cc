@@ -41,8 +41,8 @@
 #include "Randomize.hh"
 #include "G4VSolid.hh"
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+//! Standard generator for 90Sr
 PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   G4VUserPrimaryGeneratorAction(),
   fParticleGun(0),
@@ -117,14 +117,79 @@ G4ThreeVector PrimaryGeneratorAction::GetPointOnSource(){
   
   G4ThreeVector Point = TranslationVolume + PointOnSurface - NormDepth; //random point in the random volume as the translation vector + a point on the surface + a random depth 
 
-  /*
-  G4cout<< "ElementNumber_____ " << nEl << "\n";
-  G4cout<< "Element " << Elements[nEl] << "\n";
+  //G4cout<< "ElementNumber_____ " << nEl << "\n";
+  //G4cout<< "Element " << Elements[nEl] << "\n";
   
-  G4cout <<"PointOnSurface " << PointOnSurface << "\n";
-  G4cout <<"TranslationVolume " << TranslationVolume << G4endl;
-  */
+  //G4cout <<"PointOnSurface " << PointOnSurface << "\n";
+  //G4cout <<"TranslationVolume " << TranslationVolume << G4endl;
+
   
   return Point;
   
 }
+//! block end here
+
+
+/* 
+//! Uncomment for For Gamma calibration!!!
+PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
+  G4VUserPrimaryGeneratorAction(),
+  fParticleGun(0),
+  fDetector(Detector)
+{
+  G4int n_particle = 1;
+  fParticleGun = new G4ParticleGun(n_particle);
+
+  // Define particle type
+  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+  G4ParticleDefinition* particle = particleTable->FindParticle("gamma");
+
+  fParticleGun->SetParticleDefinition(particle);
+
+  // Set energy
+  fParticleGun->SetParticleEnergy(5.9*keV);
+
+  // Set direction
+  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., -1., 0.));
+
+  // Set position
+  fParticleGun->SetParticlePosition(G4ThreeVector(0., 23., 51.4*mm));
+}
+
+PrimaryGeneratorAction::~PrimaryGeneratorAction()
+{
+  delete fParticleGun;
+}
+
+void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
+{
+  fParticleGun->GeneratePrimaryVertex(anEvent);
+}
+
+G4ThreeVector PrimaryGeneratorAction::GetPointOnSource() {
+    G4double radius = 30.0 * mm;  // radius of the circle
+    G4ThreeVector center(0., 23., 51.4 * mm);  // center of the circle
+
+    // Generate a random angle between 0 and 2*pi
+    G4double theta = 2 * CLHEP::pi * G4UniformRand();
+
+    // Generate a random radius, scaled to ensure uniform distribution within the circle
+    G4double r = radius * std::sqrt(G4UniformRand());
+
+    // Calculate the x and z coordinates inside the circle
+    G4double x = r * std::cos(theta);
+    G4double z = r * std::sin(theta);
+
+    // The y coordinate is fixed, as the circle lies in the x-z plane at y = 23 mm
+    G4double y = center.y();
+
+    // Create the point inside the circle
+    G4ThreeVector PointInCircle(x, y, z);
+
+    // Translate the point to the circle's center
+    PointInCircle += center;
+
+    return PointInCircle;
+}
+//! block ends here
+ */

@@ -32,7 +32,12 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 # Add the executable, and link it to the Geant4 libraries
 #
 add_executable(rdecay01 rdecay01.cc ${sources} ${headers})
-target_link_libraries(rdecay01 ${Geant4_LIBRARIES} )
+target_link_libraries(rdecay01 ${Geant4_LIBRARIES})
+
+#----------------------------------------------------------------------------
+# Create the output_files directory in the build directory
+#
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/output_files)
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
@@ -42,7 +47,7 @@ target_link_libraries(rdecay01 ${Geant4_LIBRARIES} )
 set(rdecay01_SCRIPTS
     alpha.mac Cf238.mac Co60.mac debug.mac Gd158.mac electronicCapture.mac fullChain.mac neutron.mac
     proton.mac No252.mac Po212.mac Ra228.mac rdecay01.in singleDecay.mac timeWindow.mac
-    timeWindowBiased.mac timeWindowBiased.data atomicDeexcitation.mac vis.mac myMac.mac
+    timeWindowBiased.mac timeWindowBiased.data atomicDeexcitation.mac vis.mac myMac.mac Fe_example.mac
   )
 
 foreach(_script ${rdecay01_SCRIPTS})
@@ -57,4 +62,3 @@ endforeach()
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
 install(TARGETS rdecay01 DESTINATION bin)
-

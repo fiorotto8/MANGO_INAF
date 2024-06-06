@@ -1,3 +1,7 @@
 build/
 .vscode/
 *.root
+analysis/study
+analysis/convert
+convert
+study

@@ -2,4 +2,4 @@
 /control/cout/ignoreThreadsExcept 0
 /control/verbose 2
 /run/verbose 1
-/run/beamOn 3000000
+/run/beamOn 100000

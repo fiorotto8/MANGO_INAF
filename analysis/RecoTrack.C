@@ -246,7 +246,7 @@ void RecoTrack(std::string filename){
     // Open the input ROOT file.
     TFile* f = TFile::Open(filename.c_str());
     // Retrieve a TTree named "Hits" from the file.
-    TTree* tree = (TTree*)f->Get("Hits");
+    TTree* tree = (TTree*)f->Get("nTuple");
 
     // Define variables to hold data from the tree.
     Int_t Evn,ParticleID,ParticleTag,ParentID,VolumeNumber;

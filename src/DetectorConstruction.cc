@@ -93,8 +93,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   G4Material* Tungsten =
     nist->FindOrBuildMaterial("G4_W");
 
-  // Define stainless steel using NIST material database
-  G4Material* StainlessSteel = nist->FindOrBuildMaterial("G4_STAINLESS-STEEL");
+  // Define Silver using NIST material database
+  G4Material* Silver = nist->FindOrBuildMaterial("G4_Ag");
 
   std::vector<G4int> natoms;
   std::vector<G4String> elements;
@@ -382,7 +382,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 
 //
-//Creating the RING with a Trench and filling the trench with Stainless Steel
+//Creating the RING with a Trench and filling the trench with Silver
 //
 
 // Define dimensions
@@ -421,16 +421,16 @@ G4LogicalVolume* logicRingWithTrench = new G4LogicalVolume(solidWithTrench, PMMA
 // Set visualization attributes for the ring with trench
 logicRingWithTrench->SetVisAttributes(RingVisAttributes);
 
-// Create solid geometry for stainless steel filling the trench
-G4Tubs* solidSteelFill = new G4Tubs("solidSteelFill", GasRadius , trenchMinRadius, trenchHeight / 2, 0, 360);
+// Create solid geometry for Silver filling the trench
+G4Tubs* solidSilverFill = new G4Tubs("solidSilverFill", GasRadius , trenchMinRadius, trenchHeight / 2, 0, 360);
 
-// Create logical volume for stainless steel filling
-G4LogicalVolume* logicSteelFill = new G4LogicalVolume(solidSteelFill, StainlessSteel, "SteelFill");
+// Create logical volume for Silver filling
+G4LogicalVolume* logicSilverFill = new G4LogicalVolume(solidSilverFill, Silver, "SilverFill");
 // Set visualization attributes for the ring with trench
-logicSteelFill->SetVisAttributes(FieldRingAttributes);
+logicSilverFill->SetVisAttributes(FieldRingAttributes);
 
-// Place the stainless steel fill in the trench
-new G4PVPlacement(0, G4ThreeVector(0, 0, 0), logicSteelFill, "SteelFill", logicRingWithTrench, false, 0);
+// Place the Silver fill in the trench
+new G4PVPlacement(0, G4ThreeVector(0, 0, 0), logicSilverFill, "SilverFill", logicRingWithTrench, false, 0);
 
 // Loop to place multiple instances of the ring with trench in the simulation world
 G4int Nrings = 5;

@@ -81,10 +81,10 @@ void RunAction::BeginOfRunAction(const G4Run*)
   //
   G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
   //if ( analysisManager->IsActive() ) {
-  analysisManager->OpenFile("outfiles/"+fOutFileName+".root");
+  analysisManager->OpenFile("output_files/"+fOutFileName+".root");
     //}
 
-  analysisManager->CreateNtuple("Hits","Hits");
+  analysisManager->CreateNtuple("nTuple","nTuple");
   analysisManager->CreateNtupleIColumn("EventNumber");
   analysisManager->CreateNtupleSColumn("ParticleName");
   analysisManager->CreateNtupleIColumn("ParticleID");
@@ -94,14 +94,23 @@ void RunAction::BeginOfRunAction(const G4Run*)
   analysisManager->CreateNtupleDColumn("y_hits");
   analysisManager->CreateNtupleDColumn("z_hits");
   analysisManager->CreateNtupleDColumn("EnergyDeposit");
-  //analysisManager->CreateNtuple("TotalEnergyDeposit","TotalEnergyDeposit");
   analysisManager->CreateNtupleIColumn("VolumeNumber");
   analysisManager->CreateNtupleDColumn("VolumeTraslX");
   analysisManager->CreateNtupleDColumn("VolumeTraslY");
   analysisManager->CreateNtupleDColumn("VolumeTraslZ");
   analysisManager->CreateNtupleSColumn("Nucleus");
   analysisManager->CreateNtupleSColumn("ProcessType");
-  
+  //Minimal for digitization added on the queue
+  analysisManager->CreateNtupleDColumn("px_particle");
+  analysisManager->CreateNtupleDColumn("py_particle");
+  analysisManager->CreateNtupleDColumn("pz_particle");
+  analysisManager->CreateNtupleIColumn("pdgID_hits");
+  analysisManager->CreateNtupleDColumn("tracklen_hits");
+  analysisManager->CreateNtupleIColumn("currentTrackID");//trackID for later
+
+
+
+
   analysisManager->FinishNtuple(0);
   
 }

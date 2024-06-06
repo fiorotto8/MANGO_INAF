@@ -56,8 +56,17 @@ G4bool SensitiveDetector::ProcessHits(G4Step * aStep, G4TouchableHistory* Rohist
   //G4cout << "position of: " << particleName <<" " << track->GetTrackID() << "  is:  "<< posParticle << " Energy deposited:  " << EdepStep << "  in volume:  " << VolumeCopyNumber << " ParentID: "  << track->GetParentID()<< " lastdecay: " << DecayElement << "  Process: " << ProcessType << G4endl;
 
   G4int evt = G4RunManager::GetRunManager()->GetCurrentEvent()->GetEventID();
-  
-  
+  // Get the current track ID
+  G4int currentTrackID = track->GetTrackID();
+
+  // Get the length of the step
+  G4double stepLength = aStep->GetStepLength();
+  // Get the PDG ID of the particle
+  G4ParticleDefinition* particleDef = track->GetDefinition();
+  G4int pdgID = particleDef->GetPDGEncoding();
+  // Get the momentum direction of the particle
+  G4ThreeVector momentumDirection = track->GetMomentumDirection();
+
   if(particleTag==0 || particleTag==1){
 
     G4AnalysisManager* AnalysisManager = G4AnalysisManager::Instance(); 
@@ -77,8 +86,16 @@ G4bool SensitiveDetector::ProcessHits(G4Step * aStep, G4TouchableHistory* Rohist
     AnalysisManager->FillNtupleDColumn(12,TranslationVolVec[2]);
     AnalysisManager->FillNtupleSColumn(13,DecayElement);
     AnalysisManager->FillNtupleSColumn(14,ProcessType);   
+    AnalysisManager->FillNtupleDColumn(15,momentumDirection[0]);//px_particle
+    AnalysisManager->FillNtupleDColumn(16,momentumDirection[1]);//py_particle
+    AnalysisManager->FillNtupleDColumn(17,momentumDirection[2]);//pz_particle
+    AnalysisManager->FillNtupleIColumn(18,pdgID);//pdg_id
+    AnalysisManager->FillNtupleDColumn(19,stepLength);//lunghezza step
+    AnalysisManager->FillNtupleIColumn(20,currentTrackID);//track ID for track distrimination
+
+
 
     AnalysisManager->AddNtupleRow(0);
   }
-  
+  return true;
 }
