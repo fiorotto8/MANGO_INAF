@@ -1,0 +1,10 @@
+/process/eLoss/StepFunction 0.01 0.1 mm
+/run/verbose 0
+/event/verbose 0
+/random/setSeeds 575223199 8381234975
+/output/OutFile Rings_K40
+#Elements: Cathodes GEMs Rings Vessel Lens Sensors
+/detector/RadElement Rings
+/isotope/AtomicNumber 19
+/isotope/MassNumber 40
+/run/beamOn 10000000

@@ -1,0 +1,5 @@
+/process/eLoss/StepFunction 0.001 0.01 mm
+/run/verbose 0
+/event/verbose 0
+/random/setSeeds 575223199 8381234975
+/run/beamOn 100000
