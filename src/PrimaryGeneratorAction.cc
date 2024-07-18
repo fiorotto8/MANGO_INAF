@@ -41,7 +41,7 @@
 #include "Randomize.hh"
 #include "G4VSolid.hh"
 
-
+/*
 //! Standard generator for 90Sr
 PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   G4VUserPrimaryGeneratorAction(),
@@ -128,9 +128,9 @@ G4ThreeVector PrimaryGeneratorAction::GetPointOnSource(){
   
 }
 //! block end here
+*/
 
 
-/* 
 //! Uncomment for For Gamma calibration!!!
 PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   G4VUserPrimaryGeneratorAction(),
@@ -146,7 +146,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
 
   fParticleGun->SetParticleDefinition(particle);
 
-  // Set energy
+  //! Set energy
   fParticleGun->SetParticleEnergy(5.9*keV);
 
   // Set direction
@@ -192,4 +192,3 @@ G4ThreeVector PrimaryGeneratorAction::GetPointOnSource() {
     return PointInCircle;
 }
 //! block ends here
- */
