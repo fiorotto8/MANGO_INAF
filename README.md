@@ -14,6 +14,7 @@
 
 - root -l 'RecoTrack.C("path/to/output.root")'
 - g++ -o study Study.cpp `root-config --cflags --libs` -lVc
+- g++ -o convert ConvertForDigi_withSelection.cpp `root-config --cflags --libs` -lm
 
 If you use it as it is you can run `RunAnal.sh` (be sude to run `chmod 777 RunAnal.sh` before) when ROOT has finished you should `.q` it and wait for the study to occur
 

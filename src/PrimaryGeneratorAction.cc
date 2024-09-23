@@ -41,7 +41,7 @@
 #include "Randomize.hh"
 #include "G4VSolid.hh"
 
-/*
+
 //! Standard generator for 90Sr
 PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   G4VUserPrimaryGeneratorAction(),
@@ -128,9 +128,9 @@ G4ThreeVector PrimaryGeneratorAction::GetPointOnSource(){
   
 }
 //! block end here
-*/
 
 
+/*
 //! Uncomment for For Gamma calibration!!!
 PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   G4VUserPrimaryGeneratorAction(),
@@ -147,7 +147,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   fParticleGun->SetParticleDefinition(particle);
 
   //! Set energy
-  fParticleGun->SetParticleEnergy(5.9*keV);
+  fParticleGun->SetParticleEnergy(8.*keV);
 
   // Set direction
   fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., -1., 0.));
@@ -167,8 +167,9 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 }
 
 G4ThreeVector PrimaryGeneratorAction::GetPointOnSource() {
-    G4double radius = 30.0 * mm;  // radius of the circle
+    G4double radius = 40.0 * mm;  // radius of the circle
     G4ThreeVector center(0., 23., 51.4 * mm);  // center of the circle
+    //G4ThreeVector center(0., 23., 17 * mm);  // center of the circle
 
     // Generate a random angle between 0 and 2*pi
     G4double theta = 2 * CLHEP::pi * G4UniformRand();
@@ -192,3 +193,4 @@ G4ThreeVector PrimaryGeneratorAction::GetPointOnSource() {
     return PointInCircle;
 }
 //! block ends here
+*/

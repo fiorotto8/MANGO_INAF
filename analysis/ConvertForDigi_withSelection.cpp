@@ -6,14 +6,63 @@
 
 using namespace std;
 
+double InnerSourceContThick = 5;
+double GasRadius = 36.9; // Radius of the gas within the cylinder in mm
+double GasDistanceFromCollim = 10;
+double CollimatorDepth = 2;
+double CollimatorDistance = 0;
+double GasThickness = 50;
+double containment_off=5;//mm
+/*Positive z-direction is at 0 radians.
+Positive x-direction would be at π/2 radians.
+Negative z-direction  would be at π radians. //so this one
+Negative x-direction would be at 3π/2 radians.*/
+double acceptedAngleStart=M_PI-(30*M_PI/180);
+double acceptedAngleEnd=M_PI+(30*M_PI/180);
+// Calculate the z-coordinate of the cylinder's center
+double cyl_center_z = InnerSourceContThick / 2 + CollimatorDepth + CollimatorDistance + GasRadius + GasDistanceFromCollim;
+double zedge_min= InnerSourceContThick / 2 + CollimatorDepth + CollimatorDistance+ GasDistanceFromCollim;
+double zedge_max=InnerSourceContThick / 2 + CollimatorDepth + CollimatorDistance + 2*GasRadius + GasDistanceFromCollim;
+
+
+
+bool areAllPointsInsideCylinder(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z) {
+    // Iterate over all points
+    for (size_t i = 0; i < x.size(); ++i) {
+        // Calculate the distance from the center of the cylinder (assumed to be at (0, cylCenterZ))
+        double dx = x[i]; // x[i] - 0 is simply x[i]
+        double dz = z[i] - cyl_center_z;
+        double r = std::sqrt(dx * dx + dz * dz); // radial distance in the x-z plane
+
+         // Calculate the angle in radians from the positive z-axis
+        double angle = atan2(dx, dz); // atan2 returns the angle in radians between [-π, π]
+        // Normalize the angle to be within [0, 2π]
+        if (angle < 0) angle += 2 * M_PI;
+
+        // Check if the point is within the accepted angle range
+        bool isWithinAcceptedAngle = (angle >= acceptedAngleStart && angle <= acceptedAngleEnd);
+
+        // Check if the point is inside the circle or within the accepted angle
+        if (!(r <= (GasRadius - containment_off) || isWithinAcceptedAngle)) {
+            // Optionally, for debugging, print which point is outside the acceptable conditions
+            // std::cout << "Point at index " << i << " is outside the acceptable area" << std::endl;
+            return false;  // If any point is outside the acceptable conditions, return false immediately
+        }
+    }
+    return true;  // If all points are inside the acceptable conditions, return true
+}
+
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <output_file_name>" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <output_file_name> <fill_option: 1=check, 0=fill_all>" << std::endl;
         return 1;
     }
 
     // Get the output file name from the command line arguments
     std::string filename = argv[1];
+
+    // Get the fill option from the command line arguments (1=check, 0=fill everything)
+    bool check_points = std::stoi(argv[2]) == 1;  // If the argument is 1, check points
 
     // Open the ROOT file
     TFile *file = TFile::Open("output_t0.root");
@@ -143,8 +192,10 @@ int main(int argc, char** argv) {
         //px_part=px_particle;
         //py_part=py_particle;
         //pz_part=pz_particle;
-        //FILL
-        outTree->Fill();
+        // Check points if the flag is set, otherwise fill unconditionally
+        if (!check_points || areAllPointsInsideCylinder(x_hits_out, y_hits_out, z_hits_out)) {
+            outTree->Fill();
+        }
         //RESET
         Out_event=Evn;
         nucl=Nucleus;
