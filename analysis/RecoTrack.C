@@ -1,3 +1,12 @@
+#include <TFile.h>
+#include <TTree.h>
+#include <TSystem.h>
+
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <vector>
+
 // Constants defining the cylinder
 double InnerSourceContThick = 5;
 double GasRadius = 36.9; // Radius of the gas within the cylinder in mm
@@ -6,6 +15,7 @@ double CollimatorDepth = 2;
 double CollimatorDistance = 0;
 double GasThickness = 50;
 double containment_off=5;//mm
+double cyl_center_y = 5;
 /*Positive z-direction is at 0 radians.
 Positive x-direction would be at π/2 radians.
 Negative z-direction  would be at π radians. //so this one
@@ -57,6 +67,10 @@ bool is_fully_contained(double x, double y, double z) {
 bool areAllPointsInsideCylinder(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z) {
     // Iterate over all points
     for (size_t i = 0; i < x.size(); ++i) {
+        if (std::abs(y[i] - cyl_center_y) > (GasThickness / 2 - containment_off)) {
+            return false;
+        }
+
         // Calculate the distance from the center of the cylinder (assumed to be at (0, cylCenterZ))
         double dx = x[i]; // x[i] - 0 is simply x[i]
         double dz = z[i] - cyl_center_z;
@@ -241,126 +255,195 @@ void DrawGraphAndLineZX(const std::vector<double>& zData, const std::vector<doub
     c1->Write();
 }
 
-// Function to process track data from a ROOT file and write selected information to a new ROOT file.
-void RecoTrack(std::string filename){
-    // Open the input ROOT file.
-    TFile* f = TFile::Open(filename.c_str());
-    // Retrieve a TTree named "Hits" from the file.
-    TTree* tree = (TTree*)f->Get("nTuple");
+double ComputeTrackLength(const std::vector<Double_t>& xs,
+                          const std::vector<Double_t>& ys,
+                          const std::vector<Double_t>& zs) {
+    double L = 0.0;
+    if (xs.size() < 2) return 0.0;
 
-    // Define variables to hold data from the tree.
-    Int_t Evn,ParticleID,ParticleTag,ParentID,VolumeNumber;
-    Double_t x_hits,y_hits,z_hits,VolumeTraslX,VolumeTraslY,VolumeTraslZ,EnergyDeposit;
-    Char_t Nucleus[20];
-    Char_t ParticleName[20];
-    Char_t CreationProcess[20];
-
-    // Set the addresses of local variables where tree data will be stored during the reading process.
-    tree->SetBranchAddress("EventNumber",&Evn);
-    tree->SetBranchAddress("ParticleID",&ParticleID);
-    tree->SetBranchAddress("ParticleTag",&ParticleTag);
-    tree->SetBranchAddress("ParticleName",&ParticleName);
-    tree->SetBranchAddress("ParentID",&ParentID);
-    tree->SetBranchAddress("VolumeNumber",&VolumeNumber);
-    tree->SetBranchAddress("x_hits",&x_hits);
-    tree->SetBranchAddress("y_hits",&y_hits);
-    tree->SetBranchAddress("z_hits",&z_hits);
-    tree->SetBranchAddress("EnergyDeposit",&EnergyDeposit);
-    tree->SetBranchAddress("VolumeNumber",&VolumeNumber);
-    tree->SetBranchAddress("VolumeTraslX",&VolumeTraslX);
-    tree->SetBranchAddress("VolumeTraslY",&VolumeTraslY);
-    tree->SetBranchAddress("VolumeTraslZ",&VolumeTraslZ);
-    tree->SetBranchAddress("Nucleus",&Nucleus);
-    tree->SetBranchAddress("ProcessType",&CreationProcess);
-
-    // Initialize variables for output data.
-    Int_t Out_event;
-    Double_t ETotal;
-    Int_t nhits_out;
-    std::vector<Double_t> x_hits_out, y_hits_out, z_hits_out, EdepHits_out;
-    std::string nucl;
-    bool fullyCont;
-
-    // Create a new ROOT file to store output data.
-    TFile* f_out = new TFile(Form("elab_%s",filename.c_str()),"recreate");
-    TTree* outTree = new TTree("elabHits","elabHits");
-
-    // Define branches for the output tree.
-    outTree->Branch("EventNumber",&Out_event);
-    outTree->Branch("TotalEDep",&ETotal);
-    outTree->Branch("nhits",&nhits_out);
-    outTree->Branch("x_hits",&x_hits_out);
-    outTree->Branch("y_hits",&y_hits_out);
-    outTree->Branch("z_hits",&z_hits_out);
-    outTree->Branch("Edep_hits",&EdepHits_out);
-    outTree->Branch("FullyContained",&fullyCont);
-
-    // Read the first entry to initialize variables.
-    tree->GetEntry(0);
-    Out_event=Evn;
-    nucl=Nucleus;
-    ETotal=0;
-    nhits_out=0;
-    fullyCont=true;
-
-    // Process each entry in the tree.
-    for(int i=0; i<tree->GetEntries(); i++){
-    //for(int i=0; i<200; i++){
-
-    // Print progress for every 10000 entries processed.
-    if(i%10000==0)std::cout << i << "/" << tree->GetEntries() << std::endl;
-
-    // Read the current entry.
-    tree->GetEntry(i);
-
-    // Check if the current hit belongs to the same event and nucleus as previously processed.
-    if(Out_event == Evn && nucl == Nucleus){
-        // Accumulate total energy deposited.
-        ETotal += EnergyDeposit;
-        // Store hit data.
-        x_hits_out.push_back(x_hits);
-        y_hits_out.push_back(y_hits);
-        z_hits_out.push_back(z_hits);
-        EdepHits_out.push_back(EnergyDeposit);
-        nhits_out++;
-        // Check containment if the number of hits exceeds 50.
-        //if(fullyCont) fullyCont = is_fully_contained(x_hits,y_hits,z_hits);
-        /* if(nhits_out>10){
-        if(fullyCont) fullyCont = is_fully_contained(x_hits,y_hits,z_hits);
-        } */
+    for (size_t i = 1; i < xs.size(); ++i) {
+        double dx = xs[i] - xs[i-1];
+        double dy = ys[i] - ys[i-1];
+        double dz = zs[i] - zs[i-1];
+        L += std::sqrt(dx*dx + dy*dy + dz*dz);
     }
-    else{
-        // If a new event or nucleus is encountered, save the data from the previous event.
-        fullyCont=areAllPointsInsideCylinder(x_hits_out, y_hits_out, z_hits_out);
-        //if (fullyCont) outTree->Fill();
-        outTree->Fill();
+    return L;
+}
 
-        // Reset variables for the new event.
-        Out_event=Evn;
-        nucl=Nucleus;
-        ETotal=0;
-        nhits_out=1;
-        // Draw the plot
-        //Draw3DPlot(x_hits_out, y_hits_out, z_hits_out,i);
-        //DrawGraphAndLineZY(z_hits_out,y_hits_out,i);
-        //DrawGraphAndLineZX(z_hits_out,x_hits_out,i);
-        x_hits_out.clear(); y_hits_out.clear(); z_hits_out.clear(); EdepHits_out.clear();
 
-        // Start accumulating new event data.
-        ETotal+=EnergyDeposit;
-        x_hits_out.push_back(x_hits);
-        y_hits_out.push_back(y_hits);
-        z_hits_out.push_back(z_hits);
-        EdepHits_out.push_back(EnergyDeposit);
-        fullyCont=true;
-    }//chioudo if
+// Function to map ParticleTag to ParticleName_out
+    std::string GetParticleName(int ParticleTag) {
+        if (ParticleTag == 0) {
+            return "e-";
+        } else if (ParticleTag == 1) {
+            return "e+";
+        } else if (ParticleTag == 2) {
+            return "gamma";
+        } else if (ParticleTag == 3) {
+            return "alpha";
+        } else {
+            return "unknown";
+        }
+    }
 
-    }//chiudo for entrate
+// Reduce Geant4 hit steps into one entry per physical track.
+// EnergyDeposit is stored by Geant4 in MeV.
+void RecoTrack(std::string filename,
+               std::string particle = "e-",
+               bool primaryOnly = true) {
+    const double W_factor = 38E-6; // MeV per ion pair
 
-    // Write the remaining data to the file.
-    f_out->cd();
-    outTree->Write();
-    f_out->Save();
-    f_out->Close();
+    TFile* inputFile = TFile::Open(filename.c_str(), "READ");
+    if (!inputFile || inputFile->IsZombie()) {
+        std::cerr << "Cannot open input ROOT file: " << filename << std::endl;
+        return;
+    }
 
+    TTree* tree = nullptr;
+    inputFile->GetObject("nTuple", tree);
+    if (!tree) {
+        std::cerr << "Tree 'nTuple' is missing in " << filename << std::endl;
+        inputFile->Close();
+        return;
+    }
+
+    const char* requiredBranches[] = {
+        "EventNumber", "ParticleName", "x_hits", "y_hits", "z_hits",
+        "EnergyDeposit", "Nucleus", "ProcessType",
+        "tracklen_hits", "currentTrackID"
+    };
+    for (const char* branchName : requiredBranches) {
+        if (!tree->GetBranch(branchName)) {
+            std::cerr << "Required branch is missing: " << branchName << std::endl;
+            inputFile->Close();
+            return;
+        }
+    }
+
+    Int_t eventNumber = 0;
+    Int_t trackId = 0;
+    Double_t xHit = 0.;
+    Double_t yHit = 0.;
+    Double_t zHit = 0.;
+    Double_t energyDeposit = 0.;
+    Double_t stepLength = 0.;
+    Char_t particleName[64] = {};
+    Char_t nucleus[64] = {};
+    Char_t processType[64] = {};
+
+    tree->SetBranchStatus("*", 0);
+    for (const char* branchName : requiredBranches) {
+        tree->SetBranchStatus(branchName, 1);
+    }
+
+    tree->SetBranchAddress("EventNumber", &eventNumber);
+    tree->SetBranchAddress("ParticleName", particleName);
+    tree->SetBranchAddress("x_hits", &xHit);
+    tree->SetBranchAddress("y_hits", &yHit);
+    tree->SetBranchAddress("z_hits", &zHit);
+    tree->SetBranchAddress("EnergyDeposit", &energyDeposit);
+    tree->SetBranchAddress("Nucleus", nucleus);
+    tree->SetBranchAddress("ProcessType", processType);
+    tree->SetBranchAddress("tracklen_hits", &stepLength);
+    tree->SetBranchAddress("currentTrackID", &trackId);
+
+    TString inputBase = gSystem->BaseName(filename.c_str());
+    TString outputName = "elab_" + inputBase;
+    TFile outputFile(outputName, "RECREATE");
+    TTree outputTree("elabHits", "elabHits");
+
+    Int_t outputEvent = -1;
+    Int_t outputTrack = -1;
+    Int_t numberOfHits = 0;
+    Double_t totalEnergyDeposit = 0.;
+    Double_t trackLength = 0.;
+    Double_t primaries = 0.;
+    Bool_t fullyContained = true;
+    std::string outputParticle;
+    std::string outputNucleus;
+    std::vector<Double_t> xHits;
+    std::vector<Double_t> yHits;
+    std::vector<Double_t> zHits;
+    std::vector<Double_t> energyDeposits;
+    std::vector<Double_t> clusterPrimaries;
+
+    outputTree.Branch("EventNumber", &outputEvent);
+    outputTree.Branch("TrackID", &outputTrack);
+    outputTree.Branch("TotalEDep", &totalEnergyDeposit);
+    outputTree.Branch("nhits", &numberOfHits);
+    outputTree.Branch("x_hits", &xHits);
+    outputTree.Branch("y_hits", &yHits);
+    outputTree.Branch("z_hits", &zHits);
+    outputTree.Branch("Edep_hits", &energyDeposits);
+    outputTree.Branch("FullyContained", &fullyContained);
+    outputTree.Branch("NameParticle", &outputParticle);
+    outputTree.Branch("Nucleus", &outputNucleus);
+    outputTree.Branch("TrackLength", &trackLength);
+    outputTree.Branch("ClusterPrimaries", &clusterPrimaries);
+    outputTree.Branch("Primaries", &primaries);
+
+    bool hasTrack = false;
+
+    auto flushTrack = [&]() {
+        if (!hasTrack) {
+            return;
+        }
+        primaries = totalEnergyDeposit / W_factor;
+        fullyContained = areAllPointsInsideCylinder(xHits, yHits, zHits);
+        outputTree.Fill();
+    };
+
+    const Long64_t numberOfEntries = tree->GetEntries();
+    for (Long64_t entry = 0; entry < numberOfEntries; ++entry) {
+        if (entry % 10000 == 0) {
+            std::cout << entry << "/" << numberOfEntries << std::endl;
+        }
+
+        tree->GetEntry(entry);
+
+        if (particleName != particle) {
+            continue;
+        }
+        if (primaryOnly && std::string(processType) != "RadioactiveDecay") {
+            continue;
+        }
+
+        const bool sameTrack =
+            hasTrack && outputEvent == eventNumber && outputTrack == trackId;
+
+        if (!sameTrack) {
+            flushTrack();
+
+            outputEvent = eventNumber;
+            outputTrack = trackId;
+            outputParticle = particleName;
+            outputNucleus = nucleus;
+            numberOfHits = 0;
+            totalEnergyDeposit = 0.;
+            trackLength = 0.;
+            primaries = 0.;
+            fullyContained = true;
+            xHits.clear();
+            yHits.clear();
+            zHits.clear();
+            energyDeposits.clear();
+            clusterPrimaries.clear();
+            hasTrack = true;
+        }
+
+        totalEnergyDeposit += energyDeposit;
+        trackLength += stepLength;
+        xHits.push_back(xHit);
+        yHits.push_back(yHit);
+        zHits.push_back(zHit);
+        energyDeposits.push_back(energyDeposit);
+        clusterPrimaries.push_back(energyDeposit / W_factor);
+        ++numberOfHits;
+    }
+
+    flushTrack();
+    outputFile.cd();
+    outputTree.Write();
+    outputFile.Close();
+    inputFile->Close();
 }

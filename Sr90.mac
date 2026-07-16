@@ -1,0 +1,16 @@
+# Strontium-90 beta-source profile
+# The full Sr-90 -> Y-90 -> Zr-90 chain is retained.
+/process/eLoss/StepFunction 0.001 0.01 mm
+/run/setCut 1 um
+/control/cout/ignoreThreadsExcept 0
+/run/verbose 1
+/run/printProgress 10000
+
+/output/OutFile Sr90
+/detector/SourceMaterialZ 38
+/isotope/AtomicNumber 38
+/isotope/MassNumber 90
+/hits/Particle e-
+/rdecay01/fullChain true
+
+/run/beamOn 120000

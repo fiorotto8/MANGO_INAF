@@ -1,21 +1,18 @@
 #!/bin/bash
+set -euo pipefail
 
-# Define the file path
-FILE="../build/output_files/output_t0.root"
+INPUT_FILE="${1:-../build/output_files/Sr90_t0.root}"
+PARTICLE="${2:-e-}"
 
-# Check if the file exists
-if [ -f "$FILE" ]; then
-    echo "File '$FILE' exists. Moving to current directory."
-    mv "$FILE" .
-    if [ $? -eq 0 ]; then
-        echo "File successfully moved to the current directory."
-    else
-        echo "Failed to move the file."
-    fi
-else
-    echo "File '$FILE' does not exist."
+if [ ! -f "$INPUT_FILE" ]; then
+    echo "Input file does not exist: $INPUT_FILE" >&2
+    exit 1
 fi
 
-root 'RecoTrack.C("output_t0.root")'
-echo "Executing Study..."
-./study elab_output_t0.root -l
+INPUT_BASENAME="$(basename "$INPUT_FILE")"
+OUTPUT_FILE="elab_${INPUT_BASENAME}"
+
+root -l -b -q "RecoTrack.C(\"${INPUT_FILE}\",\"${PARTICLE}\",true)"
+
+echo "Executing angular study on ${OUTPUT_FILE}..."
+./study "$OUTPUT_FILE"

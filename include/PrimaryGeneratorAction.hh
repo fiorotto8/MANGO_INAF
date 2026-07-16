@@ -58,6 +58,9 @@ public:
   virtual void GeneratePrimaries(G4Event*);
   G4ParticleGun* GetParticleGun() { return fParticleGun;};
   G4ThreeVector GetPointOnSource();
+  void SetAtomicNumber(G4int);
+  void SetMassNumber(G4int);
+  void EnsureIsotopeSelected();
     
 private:
   G4ParticleGun*  fParticleGun;

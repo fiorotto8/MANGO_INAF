@@ -38,7 +38,9 @@
 #include "G4UnitsTable.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4Exception.hh"
 #include <iomanip>
+#include <filesystem>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -71,6 +73,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
 { 
   // keep run condition
   if (fPrimary) { 
+    fPrimary->EnsureIsotopeSelected();
     G4ParticleDefinition* particle 
       = fPrimary->GetParticleGun()->GetParticleDefinition();
     G4double energy = fPrimary->GetParticleGun()->GetParticleEnergy();
@@ -80,9 +83,14 @@ void RunAction::BeginOfRunAction(const G4Run*)
   //histograms
   //
   G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
-  //if ( analysisManager->IsActive() ) {
-  analysisManager->OpenFile("output_files/"+fOutFileName+".root");
-    //}
+  std::filesystem::create_directories("output_files");
+  G4String outputPath = "output_files/" + fOutFileName + ".root";
+  if (!analysisManager->OpenFile(outputPath)) {
+    G4ExceptionDescription description;
+    description << "Cannot open analysis output file: " << outputPath;
+    G4Exception("RunAction::BeginOfRunAction",
+                "OutputOpenFailed", FatalException, description);
+  }
 
   analysisManager->CreateNtuple("nTuple","nTuple");
   analysisManager->CreateNtupleIColumn("EventNumber");
@@ -121,12 +129,12 @@ void RunAction::EndOfRunAction(const G4Run*)
 {
   if (isMaster) fRun->EndOfRun();
             
- //save histograms
- //
- G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
- //if ( analysisManager->IsActive() ) {
- analysisManager->Write();
- analysisManager->CloseFile();
+  //save histograms
+  //
+  G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
+  //if ( analysisManager->IsActive() ) {
+  analysisManager->Write();
+  analysisManager->CloseFile();
   //} 
 }
 

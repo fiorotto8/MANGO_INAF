@@ -5,6 +5,7 @@
 #include "G4Step.hh"
 #include "G4TouchableHistory.hh"
 #include "RunAction.hh"
+#include "G4GenericMessenger.hh"
 
 class SensitiveDetector : public G4VSensitiveDetector
 {
@@ -20,6 +21,8 @@ private:
   virtual G4bool ProcessHits(G4Step *, G4TouchableHistory*);
 
   G4String lastDecay;
+  G4String fRecordedParticle;
+  G4GenericMessenger* fMessenger;
   
 };
 

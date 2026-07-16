@@ -45,9 +45,26 @@
 #include "G4Tubs.hh"
 #include "SensitiveDetector.hh"
 #include "G4Torus.hh"
+#include "G4SDManager.hh"
+#include "G4RunManager.hh"
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-DetectorConstruction::DetectorConstruction():G4VUserDetectorConstruction()
+DetectorConstruction::DetectorConstruction()
+  : G4VUserDetectorConstruction(),
+    fSourceWidth(0.),
+    fSourceMaterialZ(95),
+    fModeratorDepth(0.01*mm),
+    fCollimatorDepth(2.0*mm),
+    fCollimatorHoleRadius(1.0*mm),
+    fCollimatorDistance(0.0*mm),
+    fPhysVolStore(nullptr),
+    fLogicalGasVolume(nullptr),
+    fLogicalSource(nullptr),
+    fSensitiveDetector(nullptr),
+    fDetectorMessenger(nullptr),
+    fElectricField(nullptr),
+    fEquation(nullptr),
+    fStepper(nullptr)
 {
   fWorldSize_x = 0.3*m;
   fWorldSize_y = 0.3*m;
@@ -58,18 +75,34 @@ DetectorConstruction::DetectorConstruction():G4VUserDetectorConstruction()
   fDetectorMessenger->DeclareProperty("CollimatorThickness", fCollimatorDepth, "Select moderator thickness");
   fDetectorMessenger->DeclareProperty("CollimatorHoleRadius", fCollimatorHoleRadius, "Select moderator thickness");
   fDetectorMessenger->DeclareProperty("CollimatorDistance", fCollimatorDistance, "Select moderator thickness");
-  
-  fModeratorDepth = 0.01*mm;//Moderator is commented
-  fCollimatorDepth = 2.0*mm;
-  fCollimatorHoleRadius = 2. / 2 *mm;
-  fCollimatorDistance = 0.0*mm;
-  
+  fDetectorMessenger->DeclareMethod("SourceMaterialZ",
+                                    &DetectorConstruction::SetSourceMaterialZ,
+                                    "Set the elemental source material by atomic number");
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 DetectorConstruction::~DetectorConstruction()
-{}
+{
+  delete fDetectorMessenger;
+}
+
+void DetectorConstruction::SetSourceMaterialZ(G4int atomicNumber)
+{
+  if (atomicNumber < 1 || atomicNumber > 98) {
+    G4cerr << "Unsupported source material atomic number: "
+           << atomicNumber << G4endl;
+    return;
+  }
+
+  fSourceMaterialZ = atomicNumber;
+  if (fLogicalSource) {
+    G4Material* material =
+      G4NistManager::Instance()->FindOrBuildSimpleMaterial(fSourceMaterialZ);
+    fLogicalSource->SetMaterial(material);
+    G4RunManager::GetRunManager()->PhysicsHasBeenModified();
+  }
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -87,8 +120,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   G4Material* Alluminium =
     nist->FindOrBuildMaterial("G4_Al");
 
-  G4Material* Strontium =
-    nist->FindOrBuildMaterial("G4_Sr");
+  G4Material* SourceMaterial =
+    nist->FindOrBuildSimpleMaterial(fSourceMaterialZ);
 
   G4Material* Tungsten =
     nist->FindOrBuildMaterial("G4_W");
@@ -96,15 +129,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   // Define Silver using NIST material database
   G4Material* Silver = nist->FindOrBuildMaterial("G4_Ag");
 
-  std::vector<G4int> natoms;
-  std::vector<G4String> elements;
-
-  elements.push_back("O");
-  natoms.push_back(2);
-
-  G4double PMMADensity = 1.190*g/cm3;
-
-  G4Material* PMMA = nist->ConstructNewMaterial("PMMA", elements, natoms, PMMADensity);
+  G4Material* PMMA = nist->FindOrBuildMaterial("G4_PLEXIGLASS");
 
   
   //
@@ -114,51 +139,73 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   G4double aHe = 4.002602*g/mole;
   G4Element* elHe = new G4Element("Helium","He", 2, aHe);
 
-  //density 1394
-  G4double aAr = 39.948*g/mole;
-  G4Element* elAr = new G4Element("Argon","Ar", 18, aAr);
-
   G4double aC = 12.0107*g/mole;
   G4Element* elC = new G4Element("Carbon", "C", 6, aC);
   
   G4double aF=18.998*g/mole;
-  G4Element* elF = new G4Element("Flourine"  ,"F" , 9., aF);
+  G4Element* elF = new G4Element("Fluorine"  ,"F" , 9., aF);
 
-  G4double He_frac = 0.6;
-  G4double CF4_frac = 0.4;
-  G4double Ar_frac = 0.;
+  G4double aS = 32.065*g/mole;
+  G4Element* elS = new G4Element("Sulfur","S",16,aS);
 
-  //Ar gas
-  G4double densityAr = 1394*Ar_frac*g/m3;
-  G4double pressureAr = 1*Ar_frac*atmosphere;
-  G4double temperatureAr = 300*kelvin;
-  G4Material* Ar_gas = new G4Material("Ar_gas", densityAr, 1, kStateGas, temperatureAr, pressureAr);
-  Ar_gas->AddElement(elAr, 1);
+  // User knobs
+G4double gasPressure    = 0.65 * atmosphere;  // <-- you change only this
+G4double gasTemperature = 300*kelvin;
 
-  //He gas
-  G4double densityHe = 162.488*He_frac*g/m3;
-  G4double pressureHe = 1*He_frac*atmosphere;
-  G4double temperatureHe = 300*kelvin;
-  G4Material* He_gas = new G4Material("He_gas", densityHe, 1, kStateGas, temperatureHe, pressureHe);
-  He_gas->AddElement(elHe, 1);
+// Fractions (sum to 1.0 in volume/partial pressure sense)
+//G4double He_frac  = 0.6;
+//G4double CF4_frac = 0.4;
+//G4double Ar_frac  = 0.0;
+//G4double SF6_frac = 0.0;
+//Fraction for NID
+G4double He_frac  = 0.590551;
+G4double CF4_frac = 0.393701;
+G4double SF6_frac = 0.015748;
 
-  //CF4_gas
-  G4double densityCF4 = 3574.736*CF4_frac*g/m3;
-  G4double pressureCF4 = 1*CF4_frac*atmosphere;
-  G4double temperatureCF4 = 300*kelvin;
-  G4Material* CF4_gas = new G4Material("CF4_gas", densityCF4, 2, kStateGas, temperatureCF4, pressureCF4);
-  CF4_gas->AddElement(elC, 1);
-  CF4_gas->AddElement(elF, 4);
 
-  //CYGNO_gas
-  G4double densityMix = He_gas->GetDensity()+CF4_gas->GetDensity()+Ar_gas->GetDensity();
-  G4double pressureMix = He_gas->GetPressure()+CF4_gas->GetPressure()+Ar_gas->GetPressure();
-  G4double temperatureMix = 300*kelvin;
-  G4Material* CYGNO_gas = new G4Material("CYGNO_gas", densityMix, 3, kStateGas, temperatureMix, pressureMix);
-  CYGNO_gas->AddMaterial(He_gas, He_gas->GetDensity()/densityMix*100*perCent);
-  CYGNO_gas->AddMaterial(CF4_gas, CF4_gas->GetDensity()/densityMix*100*perCent);
-  CYGNO_gas->AddMaterial(Ar_gas, Ar_gas->GetDensity()/densityMix*100*perCent);
+// Reference densities at 1 atm, 300 K for *pure* gas
+// (your numbers were these *times* the fraction already; we separate it)
+G4double rhoHe_ref   = 162.488  * g/m3;   // He @1 atm
+G4double rhoCF4_ref  = 3574.736 * g/m3;   // CF4 @1 atm
+G4double rhoSF6_ref  = 6010.368 * g/m3;   // SF6 @1 atm
 
+// Scale by total pressure and by fraction
+// ρ_component = ρ_ref * (gasPressure / 1 atm) * fraction
+G4double densityHe   = rhoHe_ref  * (gasPressure/atmosphere) * He_frac;
+G4double densityCF4  = rhoCF4_ref * (gasPressure/atmosphere) * CF4_frac;
+G4double densitySF6  = rhoSF6_ref * (gasPressure/atmosphere) * SF6_frac;
+
+// Partial pressures (still useful to store)
+G4double pressureHe   = gasPressure * He_frac;
+G4double pressureCF4  = gasPressure * CF4_frac;
+G4double pressureSF6  = gasPressure * SF6_frac;
+
+// Build each component material
+auto* He_gas = new G4Material("He_gas",  densityHe, 1,
+                              kStateGas, gasTemperature, pressureHe);
+He_gas->AddElement(elHe,1);
+
+auto* CF4_gas = new G4Material("CF4_gas", densityCF4, 2,
+                               kStateGas, gasTemperature, pressureCF4);
+CF4_gas->AddElement(elC,1);
+CF4_gas->AddElement(elF,4);
+
+auto* SF6_gas = new G4Material("SF6_gas", densitySF6, 2,
+                               kStateGas, gasTemperature, pressureSF6);
+SF6_gas->AddElement(elS,1);
+SF6_gas->AddElement(elF,6);
+
+// Now the mixture
+G4double densityMix   = densityHe + densityCF4 + densitySF6;
+G4double pressureMix  = pressureHe + pressureCF4 + pressureSF6;
+
+auto* CYGNO_gas = new G4Material("CYGNO_gas", densityMix, 3,
+                                 kStateGas, gasTemperature, pressureMix);
+
+// Add components by MASS FRACTION = componentMass / totalMass
+CYGNO_gas->AddMaterial(He_gas,  densityHe  / densityMix);
+CYGNO_gas->AddMaterial(CF4_gas, densityCF4 / densityMix);
+CYGNO_gas->AddMaterial(SF6_gas, densitySF6 / densityMix);
   //
   //defining kapton
   //
@@ -254,17 +301,16 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   
   G4Tubs *SolidSource = new G4Tubs("Source",0,innerRad,fSourceWidth/2,0,360);  
   
-  G4LogicalVolume*                         
-    logicSource = new G4LogicalVolume(SolidSource,             //its solid
-				      Strontium,                    //its material
-				      "Source");               //its name
+  fLogicalSource = new G4LogicalVolume(SolidSource,
+                                      SourceMaterial,
+                                      "Source");
 
-  logicSource->SetVisAttributes(SourceVisAttributes);
+  fLogicalSource->SetVisAttributes(SourceVisAttributes);
   
   G4VPhysicalVolume*                                   
     physiSource = new G4PVPlacement(0,                      //no rotation
 				    G4ThreeVector(0,0,InnerSourceContThick/2-fSourceWidth/2),        //at (0,0,0)
-				   logicSource,             //its logical volume
+				   fLogicalSource,             //its logical volume
 				   "Source",                //its name
 				   logicWorld,                      //its mother  volume
 				   false,                  //no boolean operation
@@ -304,7 +350,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   */
 
 
-  
+/*
   //
   //defining collimator
   //
@@ -336,8 +382,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 				      false,                  //no boolean operation
 				       0);                     //copy number
 
-  
-  
+*/
   
   
 /*WORKING!!
@@ -429,21 +474,32 @@ G4LogicalVolume* logicSilverFill = new G4LogicalVolume(solidSilverFill, Silver, 
 // Set visualization attributes for the ring with trench
 logicSilverFill->SetVisAttributes(FieldRingAttributes);
 
-// Place the Silver fill in the trench
-new G4PVPlacement(0, G4ThreeVector(0, 0, 0), logicSilverFill, "SilverFill", logicRingWithTrench, false, 0);
-
 // Loop to place multiple instances of the ring with trench in the simulation world
 G4int Nrings = 5;
 G4double ringSpacing = (GasThickness - 5 * RingThicknessAlongDrift) / 4;
 
 for (int i = -2; i < 3; i++) {
+    G4ThreeVector ringPosition(
+      0,
+      -i * ringSpacing - i * RingThicknessAlongDrift + RingThicknessAlongDrift,
+      InnerSourceContThick / 2 + fCollimatorDepth + fCollimatorDistance
+        + GasRadius + radialRingThickness);
+
     new G4PVPlacement(rotX,
-                      G4ThreeVector(0, -i * ringSpacing - i * RingThicknessAlongDrift + RingThicknessAlongDrift, InnerSourceContThick / 2 + fCollimatorDepth + fCollimatorDistance + GasRadius + radialRingThickness),
+                      ringPosition,
                       logicRingWithTrench,
                       "RingWithTrench",
                       logicWorld,
                       false,
-                      0);
+                      i + 2);
+
+    new G4PVPlacement(rotX,
+                      ringPosition,
+                      logicSilverFill,
+                      "SilverFill",
+                      logicWorld,
+                      false,
+                      i + 2);
 }
 
 
@@ -496,6 +552,7 @@ void DetectorConstruction::ConstructSDandField()
 {
 
   fSensitiveDetector = new SensitiveDetector("SensitiveDetector");  
+  G4SDManager::GetSDMpointer()->AddNewDetector(fSensitiveDetector);
   fLogicalGasVolume->SetSensitiveDetector(fSensitiveDetector);
   
   

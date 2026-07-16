@@ -16,19 +16,28 @@
 #include "G4HadronPhysicsFTFP_BERT_HP.hh"
 #include "G4ProcessManager.hh"
 #include "G4PhysListFactory.hh"
+#include "G4EmExtraPhysics.hh"
+#include "G4HadronElasticPhysicsHP.hh"
+#include "G4EmLivermorePolarizedPhysics.hh"
 
 PhysicsList::PhysicsList(): G4VModularPhysicsList()
 {
-
-  RegisterPhysics(new G4EmStandardPhysics_option4());
+  // Default Decay Physics
   RegisterPhysics(new G4DecayPhysics());
+  // Default Radioactive Decay Physics
   RegisterPhysics(new G4RadioactiveDecayPhysics());
-
+  //EM Physics
+  RegisterPhysics(new G4EmStandardPhysics_option4(1));//recommended option
+  RegisterPhysics(new G4EmExtraPhysics());
+  //hadronic
+  RegisterPhysics( new G4HadronElasticPhysicsHP(1) );
+  //better low energy EM and polarization
+  RegisterPhysics(new G4EmLivermorePolarizedPhysics());
   
   // mandatory for G4NuclideTable
   //
-  G4NuclideTable::GetInstance()->SetThresholdOfHalfLife(1*ps*std::log(2.));
-  G4NuclideTable::GetInstance()->SetLevelTolerance(1.0*eV);
+  //G4NuclideTable::GetInstance()->SetThresholdOfHalfLife(1*ps*std::log(2.));
+  //G4NuclideTable::GetInstance()->SetLevelTolerance(1.0*eV);
 
   //read new PhotonEvaporation data set 
   //

@@ -38,10 +38,11 @@
 #include "G4Geantino.hh"
 #include "G4ParticleTable.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4Exception.hh"
 #include "Randomize.hh"
 #include "G4VSolid.hh"
 
-
+/*
 //! Standard generator for 90Sr
 PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   G4VUserPrimaryGeneratorAction(),
@@ -67,12 +68,48 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   fZIsotope = 38, fAIsotope = 90;
   
 }
+*/
+// -----------------------------------------------------------------------------
+// PrimaryGeneratorAction for a 241Am source
+// -----------------------------------------------------------------------------
+PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector) :
+  G4VUserPrimaryGeneratorAction(),
+  fParticleGun(nullptr),
+  fDetector(Detector),
+  fZIsotope(95),
+  fAIsotope(241),
+  fPrimaryMessenger(nullptr)
+{
+  // we still spawn a "geantino" with 0 energy at the source position
+  // and let G4RadioactiveDecay handle the actual alpha/gamma emissions
+  G4int n_particle = 1;
+  fParticleGun  = new G4ParticleGun(n_particle);
+
+  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+  G4ParticleDefinition* particle = particleTable->FindParticle("geantino");
+
+  // Geometry / emission point
+  fParticleGun->SetParticleEnergy(0.*eV);
+  fParticleGun->SetParticlePosition(GetPointOnSource());
+  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0.,0.,0.));
+  fParticleGun->SetParticleDefinition(particle);
+
+  // Messenger to control which isotope we spawn via macro
+  fPrimaryMessenger = new G4GenericMessenger(this, "/isotope/", "Radioactive isotope");
+  fPrimaryMessenger->DeclareMethod("AtomicNumber",
+                                   &PrimaryGeneratorAction::SetAtomicNumber,
+                                   "Select atomic number");
+  fPrimaryMessenger->DeclareMethod("MassNumber",
+                                   &PrimaryGeneratorAction::SetMassNumber,
+                                   "Select mass number");
+}
 
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction()
 {
+  delete fPrimaryMessenger;
   delete fParticleGun;
 }
 
@@ -80,21 +117,44 @@ PrimaryGeneratorAction::~PrimaryGeneratorAction()
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
-
-  if (fParticleGun->GetParticleDefinition() == G4Geantino::Geantino()) {  
-    
-    G4double ionCharge   = 0.*eplus;
-    G4double excitEnergy = 0.*keV;
-    
-    G4ParticleDefinition* ion
-      = G4IonTable::GetIonTable()->GetIon(fZIsotope,fAIsotope,excitEnergy);
-    fParticleGun->SetParticleDefinition(ion);
-    fParticleGun->SetParticleCharge(ionCharge);
-  }    
+  EnsureIsotopeSelected();
     
   //create vertex
   //   
   fParticleGun->GeneratePrimaryVertex(anEvent);
+}
+
+void PrimaryGeneratorAction::SetAtomicNumber(G4int value)
+{
+  fZIsotope = value;
+  fParticleGun->SetParticleDefinition(G4Geantino::Geantino());
+}
+
+void PrimaryGeneratorAction::SetMassNumber(G4int value)
+{
+  fAIsotope = value;
+  fParticleGun->SetParticleDefinition(G4Geantino::Geantino());
+}
+
+void PrimaryGeneratorAction::EnsureIsotopeSelected()
+{
+  if (fParticleGun->GetParticleDefinition() != G4Geantino::Geantino()) {
+    return;
+  }
+
+  G4ParticleDefinition* ion =
+    G4IonTable::GetIonTable()->GetIon(fZIsotope, fAIsotope, 0.*keV);
+  if (!ion) {
+    G4ExceptionDescription description;
+    description << "Cannot create ion Z=" << fZIsotope
+                << ", A=" << fAIsotope;
+    G4Exception("PrimaryGeneratorAction::EnsureIsotopeSelected",
+                "InvalidIsotope", FatalException, description);
+    return;
+  }
+
+  fParticleGun->SetParticleDefinition(ion);
+  fParticleGun->SetParticleCharge(0.*eplus);
 }
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -147,7 +207,8 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(DetectorConstruction* Detector):
   fParticleGun->SetParticleDefinition(particle);
 
   //! Set energy
-  fParticleGun->SetParticleEnergy(8.*keV);
+  //fParticleGun->SetParticleEnergy(8.128*keV);
+  fParticleGun->SetParticleEnergy(5.955*keV);
 
   // Set direction
   fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., -1., 0.));

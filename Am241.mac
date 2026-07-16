@@ -1,0 +1,15 @@
+# Americium-241 alpha-source profile
+/process/eLoss/StepFunction 0.001 0.01 mm
+/run/setCut 1 um
+/control/cout/ignoreThreadsExcept 0
+/run/verbose 1
+/run/printProgress 10000
+
+/output/OutFile Am241
+/detector/SourceMaterialZ 95
+/isotope/AtomicNumber 95
+/isotope/MassNumber 241
+/hits/Particle alpha
+/rdecay01/fullChain false
+
+/run/beamOn 120000

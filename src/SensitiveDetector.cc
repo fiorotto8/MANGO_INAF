@@ -5,15 +5,25 @@
 #include "G4StepPoint.hh"
 #include "G4ThreeVector.hh"
 #include "G4RunManager.hh"
+#include "G4EventManager.hh"
 #include "G4AnalysisManager.hh"
 #include "EventAction.hh"
 
 SensitiveDetector::SensitiveDetector(G4String name) :
-  G4VSensitiveDetector(name)
-{}
+  G4VSensitiveDetector(name),
+  fRecordedParticle("alpha"),
+  fMessenger(new G4GenericMessenger(this, "/hits/", "Sensitive detector output"))
+{
+  auto& particleCommand =
+    fMessenger->DeclareProperty("Particle", fRecordedParticle,
+                                "Particle stored in the hit ntuple");
+  particleCommand.SetCandidates("alpha e- e+ gamma all");
+}
 
 SensitiveDetector::~SensitiveDetector()
-{}
+{
+  delete fMessenger;
+}
 
 G4bool SensitiveDetector::ProcessHits(G4Step * aStep, G4TouchableHistory* Rohist)
 {
@@ -32,12 +42,16 @@ G4bool SensitiveDetector::ProcessHits(G4Step * aStep, G4TouchableHistory* Rohist
   G4int particleParentID = track->GetParentID();
   G4ThreeVector TranslationVolVec = track->GetVolume()->GetTranslation(); 
 
-  G4String DecayElement = GetLastDecay();
+  EventAction* eventAction = static_cast<EventAction*>(
+    G4EventManager::GetEventManager()->GetUserEventAction());
+  G4String DecayElement =
+    eventAction ? eventAction->GetIonName(particleParentID) : G4String();
   G4String ProcessType = "";
   
   if(track->GetCreatorProcess()){
     ProcessType= track->GetCreatorProcess()->GetProcessName();
   } 
+  //G4cout << "ProcessType: " << ProcessType << G4endl;
     
   G4int particleTag=-1;
 
@@ -67,7 +81,7 @@ G4bool SensitiveDetector::ProcessHits(G4Step * aStep, G4TouchableHistory* Rohist
   // Get the momentum direction of the particle
   G4ThreeVector momentumDirection = track->GetMomentumDirection();
 
-  if(particleTag==0 || particleTag==1){
+  if(fRecordedParticle == "all" || particleName == fRecordedParticle){
 
     G4AnalysisManager* AnalysisManager = G4AnalysisManager::Instance(); 
     

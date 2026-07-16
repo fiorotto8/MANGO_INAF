@@ -39,6 +39,7 @@
 #include "G4GenericMessenger.hh" 
 
 #include "globals.hh"
+#include <map>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -57,6 +58,8 @@ public:
   void SetElement(G4String el) {fElement = el;}
   void SetLastDecay(G4String lastEl) {fLastDecay=lastEl;}
   G4String GetLastDecsay() {return fLastDecay;}
+  void RegisterIon(G4int trackId, const G4String& name);
+  G4String GetIonName(G4int trackId) const;
   
 private:
   PrimaryGeneratorAction* fPrimary;
@@ -64,6 +67,7 @@ private:
   G4double        fEvisTot;
   G4String        fElement;
   G4String        fLastDecay;
+  std::map<G4int, G4String> fIonNames;
 
 };
 

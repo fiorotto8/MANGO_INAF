@@ -15,14 +15,28 @@
 #include <cmath>
 
 int main(int argc, char** argv){
+  if (argc < 2) {
+    std::cerr << "Usage: " << argv[0] << " <elaborated.root>" << std::endl;
+    return EXIT_FAILURE;
+  }
+
   // Open a ROOT file specified by the command line argument
   auto f = std::unique_ptr<TFile>( TFile::Open(Form("%s",argv[1]),"r") );
+  if (!f || f->IsZombie()) {
+    std::cerr << "Cannot open input file: " << argv[1] << std::endl;
+    return EXIT_FAILURE;
+  }
 
   // Retrieve a TTree object named "elabHits" from the file
-  auto mytree = std::unique_ptr<TTree>( (TTree*)f.get()->Get("elabHits") );
+  TTree* mytree = nullptr;
+  f->GetObject("elabHits", mytree);
+  if (!mytree) {
+    std::cerr << "Tree 'elabHits' is missing in " << argv[1] << std::endl;
+    return EXIT_FAILURE;
+  }
 
   // Setup TTreeReader to read the TTree efficiently
-  TTreeReader reader(mytree.get());
+  TTreeReader reader(mytree);
   TTreeReaderValue<Int_t> EventNumber(reader, "EventNumber");
   TTreeReaderValue<Int_t> nhits(reader, "nhits");
   TTreeReaderValue<Double_t> TotalEDep(reader, "TotalEDep");
@@ -64,11 +78,16 @@ int main(int argc, char** argv){
   for (auto entry : reader){
     EDep = *TotalEDep;  // Assign the TotalEDep from the input TTree to EDep
     FContained=*FullyContained;
+    const std::size_t numberOfPoints = std::min((*x_hits).size(), (*z_hits).size());
+    if (numberOfPoints < 2) {
+      continue;
+    }
+
     // Loop through hits and calculate distances
-    for(auto x = (*x_hits).begin(), z = (*z_hits).begin(); x!= (*x_hits).end()-1 || z!=(*z_hits).end()-1; ++x, ++z   ){
+    for(std::size_t i = 0; i + 1 < numberOfPoints; ++i){
       if(dist<5){
-        X.push_back((*x));
-        Z.push_back((*z));
+        X.push_back((*x_hits)[i]);
+        Z.push_back((*z_hits)[i]);
         //std::cout << (*x) << " "<< (*z) << std::endl;
       }
       else {
@@ -76,18 +95,24 @@ int main(int argc, char** argv){
       }//chiudo else
 
       // Calculate the Euclidean distance between consecutive points
-      dist+=sqrt( ((*x)-(*x+1)) * ((*x)-(*x+1)) + ((*z)-(*z+1)) * ((*z)-(*z+1)) );
+      const double dx = (*x_hits)[i] - (*x_hits)[i + 1];
+      const double dz = (*z_hits)[i] - (*z_hits)[i + 1];
+      dist += std::sqrt(dx*dx + dz*dz);
       //std::cout << dist << std::endl;
 
     }//chiudo for on coordinates
 
     dist=0; // Reset distance for next entry
 
-    for(int i=0;i<graph->GetN();i++){
-      graph.get()->RemovePoint(i);
+    graph->Set(0);
+
+    if (X.size() < 2) {
+      X.clear();
+      Z.clear();
+      continue;
     }
 
-    for(int i=0;i<X.size();i++){
+    for(std::size_t i = 0; i < X.size(); ++i){
       graph.get()->SetPoint(i,X[i],Z[i]);
     }
     // Fit the graph with a linear function
@@ -97,7 +122,7 @@ int main(int argc, char** argv){
     if(entry%300 == 0) {
       graph.get()->SetName(Form("Plot%lli",entry));
       graph.get()->SetMarkerStyle(8);
-      graph.get()->SetTitle("Example Plot%lli;X axis;Z axis");
+      graph.get()->SetTitle(Form("Example Plot%lli;X axis;Z axis", entry));
       graph.get()->Write();
     }
 

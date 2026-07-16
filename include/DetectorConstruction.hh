@@ -60,6 +60,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
   G4VPhysicalVolume* Construct();
 
   void SetSourceWidth(G4double a) {fSourceWidth=a;}
+  void SetSourceMaterialZ(G4int);
   G4double GetSourceWidth() {return fSourceWidth;}
   G4PhysicalVolumeStore* GetVolumeStored() {return fPhysVolStore;}
   SensitiveDetector* GetSensitiveDetector(){return fSensitiveDetector;}
@@ -71,6 +72,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
   G4double fWorldSize_z;
 
   G4double fSourceWidth;
+  G4int fSourceMaterialZ;
 
   G4double fModeratorDepth;
   G4double fCollimatorDepth;
@@ -79,6 +81,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
   
   G4PhysicalVolumeStore* fPhysVolStore;
   G4LogicalVolume* fLogicalGasVolume;
+  G4LogicalVolume* fLogicalSource;
   SensitiveDetector* fSensitiveDetector;
   virtual void ConstructSDandField();
 
@@ -93,4 +96,3 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #endif
-

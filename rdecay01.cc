@@ -48,6 +48,8 @@
 #include "G4PhysListFactory.hh"
 
 #include "G4HadronicParameters.hh"
+#include "G4Version.hh"
+#include "G4UIcommand.hh"
 
 int main(int argc,char** argv) {
 
@@ -69,7 +71,11 @@ int main(int argc,char** argv) {
 
   if (argc==3) {
     G4int nThreads = G4UIcommand::ConvertToInt(argv[2]);
-    runManager->SetNumberOfThreads(4);
+    if (nThreads != 1) {
+      G4cerr << "This version currently supports one thread only; "
+             << "running with one thread to preserve hit metadata and output."
+             << G4endl;
+    }
   }
   
   //
@@ -78,25 +84,20 @@ int main(int argc,char** argv) {
 
   DetectorConstruction* theDetector = new DetectorConstruction();
 
-  G4cout << theDetector << G4endl;
-  
   //suggested in https://geant4.web.cern.ch/download/release-notes/notes-v11.2.0.html for geant4 11.2.1
+#if G4VERSION_NUMBER >= 1120
   G4HadronicParameters::Instance()->SetTimeThresholdForRadioactiveDecay( 1.0e+60*CLHEP::year );
+#endif
   runManager->SetUserInitialization(theDetector);
 
-  /*G4PhysListFactory factory;
-  G4VModularPhysicsList* physicsList = factory.GetReferencePhysList("FTFP_BERT_HP");
-  physicsList->SetVerboseLevel(0);
-  */
-
+  // Register PhysicsList to the RunManager
+  //runManager->SetUserInitialization(new PhysicsList());
 
   //Physics list
   G4PhysListFactory factory;   
   G4VModularPhysicsList* physicsList = factory.GetReferencePhysList("QGSP_BIC_EMZ");
   physicsList->SetVerboseLevel(0);
   physicsList->RegisterPhysics(new G4RadioactiveDecayPhysics);
-
-
   runManager->SetUserInitialization(physicsList);
 
   runManager->SetUserInitialization(new ActionInitialization(theDetector));
@@ -129,4 +130,3 @@ int main(int argc,char** argv) {
   delete visManager;
   delete runManager;
 }
-

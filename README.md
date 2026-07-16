@@ -1,24 +1,63 @@
 # MANGO at INAF simulation
 
-## GEANT
+Geant4 simulation of radioactive sources next to the MANGO gas volume.
+The current supported source profiles are:
 
-- Working with geant4 11.1.0
-  - following: <https://geant4.web.cern.ch/download/release-notes/notes-v11.2.0.html> There is a line of code in the main to add for v11.2 and next
-    - `G4HadronicParameters::Instance()->SetTimeThresholdForRadioactiveDecay( 1.0e+60*CLHEP::year );`
-  - comment it if you are using <=11.1.0
-- Using `myMac.mac`
-- The new version has the possibility to simulate calibration dataset with fixed energy gammas shot from the cathode
-  - Comment the standard block in `PrimaryGenerator.cc` and uncomment the block for gamma calibration
+- `Am241.mac`: elemental Am-241 source, primary decay only, alpha hits.
+- `Sr90.mac`: elemental Sr-90 source, full Sr-90 -> Y-90 -> Zr-90 chain,
+  electron hits for the angular reconstruction.
 
-## ANALYSIS
+`myMac.mac` runs the Am-241 profile by default.
 
-- root -l 'RecoTrack.C("path/to/output.root")'
-- g++ -o study Study.cpp `root-config --cflags --libs` -lVc
-- g++ -o convert ConvertForDigi_withSelection.cpp `root-config --cflags --libs` -lm
+## Build and run
 
-If you use it as it is you can run `RunAnal.sh` (be sude to run `chmod 777 RunAnal.sh` before) when ROOT has finished you should `.q` it and wait for the study to occur
+```bash
+cmake -S . -B build
+cmake --build build -j
+cd build
+./rdecay01 Am241.mac
+# or
+./rdecay01 Sr90.mac
+```
 
-## Convert for Digitization
+The simulation is intentionally restricted to one thread for now so that the
+ROOT hit metadata and output remain consistent. Output files are written under
+`build/output_files/`, for example `Am241_t0.root` and `Sr90_t0.root`.
 
-- Move the `output_t0.root` in the analysis folder
-- g++ -o convert ConvertForDigi.cpp `root-config --cflags --libs`
+The source macros configure:
+
+- isotope atomic and mass number;
+- elemental source material;
+- whether daughter nuclei continue to decay;
+- which particle is stored in the hit ntuple.
+
+## Sr-90 electron reconstruction
+
+Build the angular study program once:
+
+```bash
+cd analysis
+g++ -O2 -o study Study.cpp $(root-config --cflags --libs)
+```
+
+Then run the complete Sr-90 reduction and angular study:
+
+```bash
+./RunAnal.sh ../build/output_files/Sr90_t0.root e-
+```
+
+The reducer creates one `elabHits` entry per direct radioactive-decay electron
+track. Energies are stored in MeV, track lengths in mm, and the ion-pair count
+uses a W-value of 38 eV.
+
+For Am-241 track reduction without the electron angular study:
+
+```bash
+root -l -b -q 'RecoTrack.C("../build/output_files/Am241_t0.root","alpha",true)'
+```
+
+## Geant4 compatibility
+
+The active physics list is the `QGSP_BIC_EMZ` reference list with radioactive
+decay physics added in `rdecay01.cc`. The radioactive-decay time-threshold API
+is guarded so the code can also build with Geant4 versions older than 11.2.

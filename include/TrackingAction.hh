@@ -57,6 +57,7 @@ public:
 private:
   EventAction*        fEvent;
   DetectorConstruction* fDetector;
+  TrackingMessenger* fTrackingMessenger;
   G4double fCharge, fMass;        
   G4bool   fFullChain;
   
