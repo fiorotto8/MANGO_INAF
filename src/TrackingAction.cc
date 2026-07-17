@@ -40,6 +40,7 @@
 #include "G4ParticleTypes.hh"
 #include "G4IonTable.hh"
 #include "G4RunManager.hh"
+#include "G4VProcess.hh"
 
 #include "G4SystemOfUnits.hh"
 #include "G4UnitsTable.hh"
@@ -82,6 +83,14 @@ void TrackingAction::PreUserTrackingAction(const G4Track* track)
     
   G4double Ekin = track->GetKineticEnergy();
   G4int ID      = track->GetTrackID();
+
+  if (fCharge > 2.) fEvent->RecordIon(track);
+
+  const G4VProcess* creator = track->GetCreatorProcess();
+  if (name == "e-" && creator &&
+      creator->GetProcessName() == "RadioactiveDecay") {
+    fEvent->RecordBetaGenerated(track);
+  }
   
   G4bool condition = false;
   
@@ -205,4 +214,3 @@ void TrackingAction::PostUserTrackingAction(const G4Track* track)
   }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-

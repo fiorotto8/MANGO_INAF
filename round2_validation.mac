@@ -1,0 +1,8 @@
+# Short validation run.  Source, geometry, gas, physics, containment, and
+# production step-function settings are unchanged from MANGO_INAF_v1.0.
+/process/eLoss/StepFunction 0.001 0.01 mm
+/control/cout/ignoreThreadsExcept 0
+/run/verbose 1
+/run/printProgress 100
+/output/OutFile validation
+/run/beamOn 1000

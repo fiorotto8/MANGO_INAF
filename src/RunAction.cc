@@ -103,6 +103,44 @@ void RunAction::BeginOfRunAction(const G4Run*)
   analysisManager->CreateNtupleSColumn("ProcessType");
   
   analysisManager->FinishNtuple(0);
+
+  // One compact row per beta electron created directly by radioactive decay.
+  // Directions use the manuscript convention: x is the drift/GEM normal and
+  // y-z is the GEM/camera plane.  Energies are stored in keV and angles in rad.
+  analysisManager->CreateNtuple("Acceptance", "Sr90 beta acceptance");
+  analysisManager->CreateNtupleIColumn("EventID");
+  analysisManager->CreateNtupleIColumn("TrackID");
+  analysisManager->CreateNtupleIColumn("ParentID");
+  analysisManager->CreateNtupleDColumn("GeneratedEnergy_keV");
+  analysisManager->CreateNtupleDColumn("GeneratedUx");
+  analysisManager->CreateNtupleDColumn("GeneratedUy");
+  analysisManager->CreateNtupleDColumn("GeneratedUz");
+  analysisManager->CreateNtupleDColumn("GeneratedTheta_rad");
+  analysisManager->CreateNtupleDColumn("GeneratedPhi_rad");
+  analysisManager->CreateNtupleDColumn("GeneratedSinTheta");
+  analysisManager->CreateNtupleDColumn("GeneratedAbsUx");
+  analysisManager->CreateNtupleIColumn("GasEntered");
+  analysisManager->CreateNtupleDColumn("EntryEnergy_keV");
+  analysisManager->CreateNtupleDColumn("Ux");
+  analysisManager->CreateNtupleDColumn("Uy");
+  analysisManager->CreateNtupleDColumn("Uz");
+  analysisManager->CreateNtupleDColumn("Theta_rad");
+  analysisManager->CreateNtupleDColumn("Phi_rad");
+  analysisManager->CreateNtupleDColumn("SinTheta");
+  analysisManager->CreateNtupleDColumn("AbsUx");
+  analysisManager->CreateNtupleDColumn("DepositedEnergy_keV");
+  analysisManager->CreateNtupleIColumn("HitCount");
+  analysisManager->CreateNtupleIColumn("FullyContained");
+  analysisManager->CreateNtupleIColumn("Selected");
+  analysisManager->CreateNtupleIColumn("RecoAvailable");
+  analysisManager->CreateNtupleDColumn("RecoUx");
+  analysisManager->CreateNtupleDColumn("RecoUy");
+  analysisManager->CreateNtupleDColumn("RecoUz");
+  analysisManager->CreateNtupleDColumn("RecoTheta_rad");
+  analysisManager->CreateNtupleDColumn("RecoPhi_rad");
+  analysisManager->CreateNtupleDColumn("RecoSinTheta");
+  analysisManager->CreateNtupleDColumn("RecoAbsUx");
+  analysisManager->FinishNtuple(1);
   
 }
 

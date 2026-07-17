@@ -6,6 +6,7 @@
 #include "G4ThreeVector.hh"
 #include "G4RunManager.hh"
 #include "G4AnalysisManager.hh"
+#include "G4EventManager.hh"
 #include "EventAction.hh"
 
 SensitiveDetector::SensitiveDetector(G4String name) :
@@ -61,6 +62,10 @@ G4bool SensitiveDetector::ProcessHits(G4Step * aStep, G4TouchableHistory* Rohist
   if(particleTag==0 || particleTag==1){
 
     G4AnalysisManager* AnalysisManager = G4AnalysisManager::Instance(); 
+
+    EventAction* eventAction = static_cast<EventAction*>(
+      G4EventManager::GetEventManager()->GetUserEventAction());
+    if(eventAction) eventAction->RecordSensitiveStep(aStep);
     
     AnalysisManager->FillNtupleIColumn(0,evt);
     AnalysisManager->FillNtupleSColumn(1,particleName);
@@ -80,5 +85,6 @@ G4bool SensitiveDetector::ProcessHits(G4Step * aStep, G4TouchableHistory* Rohist
 
     AnalysisManager->AddNtupleRow(0);
   }
-  
+
+  return true;
 }
